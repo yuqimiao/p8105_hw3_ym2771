@@ -124,8 +124,13 @@ brfss_overall_health <-
     brfss_smart2010 %>%
     janitor::clean_names() %>% 
     filter(topic == "Overall Health", response %in% c("Excellent", "Very good", "Good", "Fair", "Poor")) %>%
-    mutate(state = factor(locationabbr), location = locationdesc,response = factor(response,levels = c("Poor","Fair","Good","Very good","Excellent" ), ordered = T))
+    mutate(state = factor(locationabbr), location = locationdesc, response = factor(response,levels = c("Poor","Fair","Good","Very good","Excellent" ), ordered = T)) %>% 
+    select(year, state, location, everything(), -locationabbr, -locationdesc)
 ```
+
+### Data description:
+
+In the total dataset, there are `r nrow(brfss_overall_health)` observations and `r ncol(brfss_overall_health)` variables. In this analysis, the key variables are year, state, location, data_value and response.
 
 ## Exploratary analysis
 
@@ -144,7 +149,7 @@ knitr::kable(states_with_7m)
 
 ### Comment
 
-In 2002, there are overall 6 states having 7 or more locations, while in 2010, the number of states having 7 or more locations had increased to `r nrow(states_with_7m)-1`, and the overlapping states are `r states_with_7m %>% drop_na() %>% pull(locationabbr)`
+In 2002, there are overall 6 states having 7 or more locations, while in 2010, the number of states having 7 or more locations had increased to `r nrow(states_with_7m)-1`, and the overlapping states are `r states_with_7m %>% drop_na() %>% pull(state)`
 
 ## data_value plot across locations
 
@@ -181,6 +186,9 @@ g
 
 ```
 
+
+
+
 ### comment
 
 As shown above, the distributions of data_value among different responses vary significantly. Among which, the data_value distribution of "poor" response has the smallest mean value and smallest variance, and data value of other categories has much wider distributions. In 2006, data value distribution of "poor" response is greatly separated with other response categories, while in 2010, the mean value of "fair response is decreasing and overlapped with "poor" response.
@@ -201,7 +209,9 @@ accelerometer_chf <-
         day = factor(day, levels = weekdays, order = T),
         week = factor(week)
         ) %>% 
-    select(week,day_id,day,week_day_vs_weekend,everything())
+    arrange(week,day) %>% 
+    mutate(day_order = row_number() %/% 1440 + 1) %>% 
+    select(week,day_order,day,week_day_vs_weekend,everything())
 
 ```
 
@@ -215,12 +225,12 @@ Traditional analyses of accelerometer data focus on the total activity over the 
 accelerometer_chf_total <- 
     accelerometer_chf %>% 
     group_by(week,day) %>% 
-    summarise(sum_activity = sum(activity_count))%>% 
-    ungroup() %>% 
-    arrange(week,day) %>% 
-    mutate(day_order = row_number())
-
-knitr::kable(accelerometer_chf_total, caption = "Total Activity for Each Day")
+    summarise(sum_activity = sum(activity_count),day_order = mean(day_order))
+   
+acc_total_table <- accelerometer_chf_total %>%
+    select(-day_order) %>% 
+    pivot_wider(names_from = day, values_from = sum_activity)
+knitr::kable(acc_total_table, caption = "Total Activity for Each Day")
 
 g <- 
     ggplot(data = accelerometer_chf_total, aes(x = day_order, y = sum_activity, color = as.numeric(week))) +
@@ -265,9 +275,7 @@ accelerometer_chf %>%
 
 ### comment
 
-As shown in two plots above, the activity counts of the  accelerometer is low during 0am to 4am, which may indicate that during the deep sleep period, the activity frequency of accelerometer is relatively low; during 9am to 11 am, the activity frequency reach the first peak, which may indicate that during the morning work period, the object we investigate has more highly-motivated activities; during lunch time(11am-2pm), the activity counts are relatively low, which may indicates the mid-day breaks; during afternoon(2pm-5pm), the activity is growing again, but not as high as the morning peak; The highest activity counts falls in night(8pm-9pm), which may indicate that the object has the most Vigorous Activities at early night. There are also day to day variance among weekdays, as shown in minute plot, in sunday, the activity peak is at 
-
-
+As shown in two plots above, the activity counts of the  accelerometer is low during 0am to 4am, which may indicate that during the deep sleep period, the activity frequency of accelerometer is relatively low; during 9am to 11 am, the activity frequency reach the first peak, which may indicate that during the morning work period, the object we investigate has more highly-motivated activities; during lunch time(11am-2pm), the activity counts are relatively low, which may indicates the mid-day breaks; during afternoon(2pm-5pm), the activity is growing again, but not as high as the morning peak; The highest activity counts falls in night(8pm-9pm), which may indicate that the object has the most Vigorous Activities at early night. There are also day to day variance among weekdays, as shown in minute plot, in sunday, the activity peak is at around 10am.
 
 
 
