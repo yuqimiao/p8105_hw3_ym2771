@@ -57,7 +57,7 @@ g <-
         axis.title.y = element_text(color="#993333", size=10, face="bold")
         )+
     geom_text(vjust = 0,color = "darkblue") + 
-    ggtitle( "The Number of Items Ordered in Each Aisle")+ 
+    ggtitle( "Plot1 The Number of Items Ordered in Each Aisle")+ 
     xlab("Aisle Names")+
     ylab ("Count")
 g   
@@ -65,7 +65,7 @@ g
 ```
 
 ### comments:
-In dataset instacart, there are `r n_distinct(instacart %>% pull(aisle))` aisles in total. There are `r nrow(instacart_aisle)` aisles bigger than 10,000 in total and the top5 most popular aisle is `r instacart_aisle$aisle[1:5]`, reflecting the most urgent demands of online-shopping customers. As shown in the plot, `r instacart_aisle$aisle[1:2]` are extremely popular, the counts of this two aisles are nearly 150,000, far more larger than the latter ranks.
+In dataset instacart, there are `r n_distinct(instacart %>% pull(aisle))` aisles in total. There are `r nrow(instacart_aisle)` aisles bigger than 10,000 in total and the top5 most popular aisle are `r instacart_aisle$aisle[1:5]`, reflecting the most urgent demands of online-shopping customers. As shown in the plot, `r instacart_aisle$aisle[1:2]` are extremely popular, the counts of this two aisles are nearly 150,000, far more larger than the latter ranks.
 
 ### Make a table showing the three most popular items in three aisles 
 
@@ -78,7 +78,7 @@ instacart_3aisle_table <-
     filter(aisle %in% c( "baking ingredients", "dog food care","packaged vegetables fruits")) %>%
     filter(rank <= 3) %>% 
     arrange(aisle, rank)
-knitr::kable(instacart_3aisle_table)
+knitr::kable(instacart_3aisle_table, caption = "Table 1: The most popular products in 3 aisles: baking ingredients, dog food care,packaged vegetables fruits")
 ```
 
 ### comments: 
@@ -100,15 +100,15 @@ purchase_hour_of_weekday <-
     mutate(order_dow = weekdays[order_dow+1]) %>% 
     filter(product_name %in% c("Pink Lady Apples","Coffee Ice Cream")) %>% 
     group_by(product_name,order_dow) %>% 
-    summarise(mean_how = mean(order_hour_of_day)) %>% 
-    pivot_wider(names_from = order_dow, values_from = mean_how) %>% 
+    summarise(mean_how = round(mean(order_hour_of_day),2)) %>% 
+    pivot_wider(names_from = order_dow, values_from = mean_how) %>%
     select(product_name,weekdays)
-knitr::kable(purchase_hour_of_weekday)
+knitr::kable(purchase_hour_of_weekday, caption = "Table 2: mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered")
 
     
 ```
 
-* comments:
+## comments:
 
 This mean purchase hour of this two products are distributed near mid-day. As for Coffee Ice Cream, there is a clear trend that purchase hour would be earlier when near weekend than mid-week; For Pink Lady Apples, the purchase hour fluctuated without clear format, people tend to buy this product later in Wednesday, sunday and Friday.
 
@@ -144,7 +144,7 @@ states_with_7m <-
     filter(count >= 7, year %in% c(2010,2002)) %>% 
     pivot_wider(names_from = year, values_from = count )
 
-knitr::kable(states_with_7m)
+knitr::kable(states_with_7m, caption = "Table 1: States were observed at 7 or more locations in 2002 and 2010")
 ```
 
 ### Comment
@@ -162,7 +162,8 @@ data_value_plot_data <-
 g <- 
     ggplot(data = data_value_plot_data,aes(x = year, y = mean_data_value, color = state)) +
     geom_line() + 
-    scale_color_viridis(discrete = TRUE,option = "B")
+    scale_color_viridis(discrete = TRUE,option = "B")+
+    labs(title = "Plot 1: data_value in years among locations", y = "Mean data_value")
 g
 ```
 
@@ -181,12 +182,10 @@ g <-
     ggplot(dv_resp_plot_data, aes(x = data_value,fill = response)) +
     facet_grid(rows = vars(year))+
     geom_density( color = "darkblue",alpha = 0.5)+
-    labs(title = "Data_value distribution for responses in NY State")
+    labs(title = "Plot 2: Data_value distribution for responses in NY State")
 g
 
 ```
-
-
 
 
 ### comment
@@ -219,7 +218,7 @@ accelerometer_chf <-
 
 This dataset contains the counts of accelerometer activity for every miute of a 24-hour day in 5 weeks, with `r nrow(accelerometer_chf)` rows(minutes) and `r ncol(accelerometer_chf)` columns. The variables in the dataset are `r names(accelerometer_chf)`.
 
-Traditional analyses of accelerometer data focus on the total activity over the day. Using your tidied dataset, aggregate accross minutes to create a total activity variable for each day, and create a table showing these totals. Are any trends apparent?
+## The total activity over the day
 
 ```{r}
 accelerometer_chf_total <- 
@@ -230,13 +229,13 @@ accelerometer_chf_total <-
 acc_total_table <- accelerometer_chf_total %>%
     select(-day_order) %>% 
     pivot_wider(names_from = day, values_from = sum_activity)
-knitr::kable(acc_total_table, caption = "Total Activity for Each Day")
+knitr::kable(acc_total_table, caption = "Table 1: Total Activity for Each Day")
 
 g <- 
     ggplot(data = accelerometer_chf_total, aes(x = day_order, y = sum_activity, color = as.numeric(week))) +
     geom_line() +
     scale_x_discrete(name = "day order", limits = 1:35) +
-    labs(title = "Total accelerometer activity of a day during 5 weeks", y = "Activity counts per day", color = "week") +
+    labs(title = "Plot 1: Total accelerometer activity of a day during 5 weeks", y = "Activity counts per day", color = "week") +
     scale_color_viridis()
 g
 
@@ -254,7 +253,7 @@ accelerometer_chf %>%
     ggplot(aes(x = activity, y = activity_count, color = day)) +
     geom_line(alpha = 0.4) +
     scale_x_discrete(name = "Time/min", breaks = seq(1,1440,120))+
-    labs(title = "Activity Counts (per minute) in Each Day of Week")+
+    labs(title = "Plot 2: Activity Counts (per minute) in Each Day of Week")+
     scale_fill_brewer(palette="Set2")
 ```
 
@@ -269,13 +268,13 @@ accelerometer_chf %>%
     ggplot(aes(x = hour, y =hour_sum)) +
     geom_bar(stat = "identity",aes(fill = day)) +
     scale_x_discrete(name = "Time/hour",)+
-    labs(title = "Activity Counts (per hour) in Each Day of Week")+
+    labs(title = "Plot 3: Activity Counts (per hour) in Each Day of Week")+
     scale_color_viridis(discrete = T)
 ```
 
 ### comment
 
-As shown in two plots above, the activity counts of the  accelerometer is low during 0am to 4am, which may indicate that during the deep sleep period, the activity frequency of accelerometer is relatively low; during 9am to 11 am, the activity frequency reach the first peak, which may indicate that during the morning work period, the object we investigate has more highly-motivated activities; during lunch time(11am-2pm), the activity counts are relatively low, which may indicates the mid-day breaks; during afternoon(2pm-5pm), the activity is growing again, but not as high as the morning peak; The highest activity counts falls in night(8pm-9pm), which may indicate that the object has the most Vigorous Activities at early night. There are also day to day variance among weekdays, as shown in minute plot, in sunday, the activity peak is at around 10am.
+As shown in two plots above, the activity counts of the  accelerometer is low during 0am to 4am, which may indicate that during the deep sleep period, the activity frequency of accelerometer is relatively low; during 9am to 11 am, the activity frequency reach the first peak, which may indicate that during the morning work period, the object we investigate has more highly-motivated activities; during lunch time(11am-2pm), the activity counts are relatively low, which may indicates the mid-day breaks; during afternoon(2pm-5pm), the activity is growing again, but not as high as the morning peak; The highest activity counts falls in night(8pm-9pm), which may indicate that the object has the most Vigorous Activities at early night. There are also day to day variance among weekdays, as shown in plot 2, in sunday, the activity peak is at around 10am.
 
 
 
