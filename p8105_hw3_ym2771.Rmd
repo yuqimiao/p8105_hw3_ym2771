@@ -1,0 +1,301 @@
+---
+title: "p8105_hw3_ym2771"
+author: "Yuqi Miao"
+date: "10/4/2019"
+output: github_document
+---
+
+# Problem 1
+```{r, message=FALSE}
+library(p8105.datasets)
+data("instacart")
+library(tidyverse)
+library(viridis)
+```
+
+
+
+```{r brief description, message=FALSE}
+instacart <- instacart %>% 
+    janitor::clean_names() %>% 
+    distinct() 
+instacart %>% 
+    group_by(user_id) %>% 
+    summarize(count = n(), order_number = mean(order_number), order_dow = mean(order_dow),order_hour_of_day = mean(order_hour_of_day), reorder = sum(as.numeric(reordered)), days_before_prior_purchase = mean(days_since_prior_order) )
+
+```
+
+## Description of the dataset
+
+The instavart dataset with `r nrow(instacart)` observations and `r ncol(instacart)` variables gives order information for `r instacart %>% pull(user_id) %>% n_distinct` users, who only have single order respectively.
+
+The information focus on the following dimension: **firstly**, detailed order information, including `order composition`(suggested by `r names(instacart)[c(2,11,12,13,14,15)]`), and `order time` (accurate to hour, suggested by variables `r names(instacart)[c(8,9)]`); **secondly**, the users' order frequency, which is illustrated by `order sequence number for the specific user`(suggested by `r names(instacart)[7]`) and `shopping interval`(suggested by `r names(instacart)[10]`); **thirdly**, users shopping preferrence can also be analysed by the `order adding to cart` and `reorder information`(suggested by `r names(instacart)[c(3,4)]`,respectively). 
+
+For example, for user 1,this dataset shows that he/she got is his/her 11th order at 8AM on Thursday, and the order was comprised of 11 products with detailed information about products, aisles and departments, among which 10 products are reordered 14 days before.
+
+## Analysis
+
+### How many aisles are there, and which aisles are the most items ordered from?
+
+```{r}
+instacart_aisle <- 
+    instacart %>% 
+    group_by(aisle_id,aisle) %>% 
+    summarise(count = n()) %>% 
+    arrange(desc(count)) %>% 
+    filter(count >= 10000) %>% 
+    ungroup() %>% 
+    mutate(rank = row_number(),label = ifelse(as.numeric(rank) > 5,'',as.character(rank)))
+
+g <- 
+    ggplot(data = instacart_aisle, aes(x = aisle, y = count,label = label )) +
+    geom_bar(stat="identity",fill = "grey50") +
+    theme(
+        axis.text.x = element_text(angle = 60,hjust = 1),
+        plot.title = element_text(color="black", size=14, face="bold.italic",hjust = 0.5),
+        axis.title.x = element_text(color="blue", size=10, face="bold"),
+        axis.title.y = element_text(color="#993333", size=10, face="bold")
+        )+
+    geom_text(vjust = 0,color = "darkblue") + 
+    ggtitle( "The Number of Items Ordered in Each Aisle")+ 
+    xlab("Aisle Names")+
+    ylab ("Count")
+g   
+
+```
+
+### comments:
+In dataset instacart, there are `r n_distinct(instacart %>% pull(aisle))` aisles in total. There are `r nrow(instacart_aisle)` aisles bigger than 10,000 in total and the top5 most popular aisle is `r instacart_aisle$aisle[1:5]`, reflecting the most urgent demands of online-shopping customers. As shown in the plot, `r instacart_aisle$aisle[1:2]` are extremely popular, the counts of this two aisles are nearly 150,000, far more larger than the latter ranks.
+
+### Make a table showing the three most popular items in three aisles 
+
+```{r}
+instacart_3aisle_table <- 
+    instacart %>% 
+    group_by(aisle,product_name) %>% 
+    summarise(count = n()) %>% 
+    mutate(rank = min_rank(desc(count))) %>% 
+    filter(aisle %in% c( "baking ingredients", "dog food care","packaged vegetables fruits")) %>%
+    filter(rank <= 3) %>% 
+    arrange(aisle, rank)
+knitr::kable(instacart_3aisle_table)
+```
+
+### comments: 
+
+**Firstly**, there are huge differences among the demands of aisles, the maximum overall demand  is for packaged vegetables fruits, then baking ingredients, and minimum for dog food care.
+
+**Secondly**, the difference within aisles varies. As for packaged vegetables fruits, the demand for Organic Baby Spinach is extremely high, up to roughly twice as much as the second rank product in this aisle, and the difference between 2nd and 3rd rank is moderately smaller; As for baking ingredients, the demand for Light Brown Sugar is also significantly greater than the demand for second and third rank; As for dog food care, the demand differences among 3 ranks is not that significant.
+
+
+
+
+### Table of mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week
+
+```{r}
+weekdays <- c("Sun","Mon","Tue","Wed","Thu","Fri","Sat")
+purchase_hour_of_weekday <- 
+    instacart %>%
+    arrange(order_dow) %>% 
+    mutate(order_dow = weekdays[order_dow+1]) %>% 
+    filter(product_name %in% c("Pink Lady Apples","Coffee Ice Cream")) %>% 
+    group_by(product_name,order_dow) %>% 
+    summarise(mean_how = mean(order_hour_of_day)) %>% 
+    pivot_wider(names_from = order_dow, values_from = mean_how) %>% 
+    select(product_name,weekdays)
+knitr::kable(purchase_hour_of_weekday)
+
+    
+```
+
+* comments:
+
+This mean purchase hour of this two products are distributed near mid-day. As for Coffee Ice Cream, there is a clear trend that purchase hour would be earlier when near weekend than mid-week; For Pink Lady Apples, the purchase hour fluctuated without clear format, people tend to buy this product later in Wednesday, sunday and Friday.
+
+
+# Problem 2
+```{r}
+data("brfss_smart2010")
+```
+
+## Data cleaning:
+```{r}
+brfss_overall_health <- 
+    brfss_smart2010 %>%
+    janitor::clean_names() %>% 
+    filter(topic == "Overall Health", response %in% c("Excellent", "Very good", "Good", "Fair", "Poor")) %>%
+    mutate(state = factor(locationabbr), location = locationdesc,response = factor(response,levels = c("Poor","Fair","Good","Very good","Excellent" ), ordered = T))
+```
+
+## Exploratary analysis
+
+### In 2002, which states were observed at 7 or more locations? What about in 2010?
+
+```{r}
+states_with_7m <- 
+    brfss_overall_health %>% 
+    group_by(year, state) %>% 
+    summarise(count = n_distinct(location)) %>% 
+    filter(count >= 7, year %in% c(2010,2002)) %>% 
+    pivot_wider(names_from = year, values_from = count )
+
+knitr::kable(states_with_7m)
+```
+
+### Comment
+
+In 2002, there are overall 6 states having 7 or more locations, while in 2010, the number of states having 7 or more locations had increased to `r nrow(states_with_7m)-1`, and the overlapping states are `r states_with_7m %>% drop_na() %>% pull(locationabbr)`
+
+## data_value plot across locations
+
+```{r}
+data_value_plot_data <- 
+    brfss_overall_health %>% 
+    filter(response == "Excellent") %>% 
+    group_by(year, state) %>% 
+    summarise(mean_data_value = mean(data_value)) 
+g <- 
+    ggplot(data = data_value_plot_data,aes(x = year, y = mean_data_value, color = state)) +
+    geom_line() + 
+    scale_color_viridis(discrete = TRUE,option = "B")
+g
+```
+
+### comment
+
+As shown in the figure, the mean data_value for different years varies differently among states. The overall trend of the data_value of years among states are decreasing. The range of mean data_value of years among states is (`r range(data_value_plot_data %>% pull(mean_data_value),na.rm = T)[1]`, `r range(data_value_plot_data %>% pull(mean_data_value),na.rm = T)[2]`), where the minmum value is from `r data_value_plot_data[which.min(data_value_plot_data$mean_data_value),2]` in year `r data_value_plot_data[which.min(data_value_plot_data$mean_data_value),1]`, and the maximum value comes from `r data_value_plot_data[which.max(data_value_plot_data$mean_data_value),2]` in year`r data_value_plot_data[which.max(data_value_plot_data$mean_data_value),1]`.
+
+### Data_value distribution for responses in NY State
+
+```{r}
+dv_resp_plot_data <- 
+    brfss_overall_health %>%  
+    filter(year %in% c(2006,2010), state == "NY") %>% 
+    mutate(year = factor(year))
+g <- 
+    ggplot(dv_resp_plot_data, aes(x = data_value,fill = response)) +
+    facet_grid(rows = vars(year))+
+    geom_density( color = "darkblue",alpha = 0.5)+
+    labs(title = "Data_value distribution for responses in NY State")
+g
+
+```
+
+### comment
+
+As shown above, the distributions of data_value among different responses vary significantly. Among which, the data_value distribution of "poor" response has the smallest mean value and smallest variance, and data value of other categories has much wider distributions. In 2006, data value distribution of "poor" response is greatly separated with other response categories, while in 2010, the mean value of "fair response is decreasing and overlapped with "poor" response.
+
+# Problem 3
+
+
+```{r}
+weekend <- c("Sunday","Saturday")
+weekdays <- c("Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday")
+accelerometer_chf <- 
+    read_csv('data/accel_data.csv') %>% 
+    janitor::clean_names() %>% 
+    pivot_longer(cols = 4:1443, names_to = "activity",names_prefix = "activity_", values_to = "activity_count") %>% 
+    mutate(
+        week_day_vs_weekend = factor(ifelse(day %in% weekend, "weekend","weekdays")),
+        activity = factor(activity, levels = 1:1440), 
+        day = factor(day, levels = weekdays, order = T),
+        week = factor(week)
+        ) %>% 
+    select(week,day_id,day,week_day_vs_weekend,everything())
+
+```
+
+### Describe the resulting dataset 
+
+This dataset contains the counts of accelerometer activity for every miute of a 24-hour day in 5 weeks, with `r nrow(accelerometer_chf)` rows(minutes) and `r ncol(accelerometer_chf)` columns. The variables in the dataset are `r names(accelerometer_chf)`.
+
+Traditional analyses of accelerometer data focus on the total activity over the day. Using your tidied dataset, aggregate accross minutes to create a total activity variable for each day, and create a table showing these totals. Are any trends apparent?
+
+```{r}
+accelerometer_chf_total <- 
+    accelerometer_chf %>% 
+    group_by(week,day) %>% 
+    summarise(sum_activity = sum(activity_count))%>% 
+    ungroup() %>% 
+    arrange(week,day) %>% 
+    mutate(day_order = row_number())
+
+knitr::kable(accelerometer_chf_total, caption = "Total Activity for Each Day")
+
+g <- 
+    ggplot(data = accelerometer_chf_total, aes(x = day_order, y = sum_activity, color = as.numeric(week))) +
+    geom_line() +
+    scale_x_discrete(name = "day order", limits = 1:35) +
+    labs(title = "Total accelerometer activity of a day during 5 weeks", y = "Activity counts per day", color = "week") +
+    scale_color_viridis()
+g
+
+
+```
+
+
+### comment
+As shown in the table and graphs, the range of the daily activity is (`r range(accelerometer_chf_total %>% pull(sum_activity),na.rm = T)[1]`, `r range(accelerometer_chf_total %>% pull(sum_activity),na.rm = T)[2]`), and the total activity of the accelerometer varies greatly among days. Variance between day 3 to day 27 is relevantly small, while the variance between the first 3 days and between day 27 to day 35 is extremely large, if collecting data in longer period, we may find a fluctuation period of daily activities sum.
+
+
+Accelerometer data allows the inspection activity over the course of the day. Make a single-panel plot that shows the 24-hour activity time courses for each day and use color to indicate day of the week. Describe in words any patterns or conclusions you can make based on this graph.
+```{r}
+accelerometer_chf %>% 
+    ggplot(aes(x = activity, y = activity_count, color = day)) +
+    geom_line(alpha = 0.4) +
+    scale_x_discrete(name = "Time/min", breaks = seq(1,1440,120))+
+    labs(title = "Activity Counts (per minute) in Each Day of Week")+
+    scale_fill_brewer(palette="Set2")
+```
+
+
+
+```{r}
+accelerometer_chf %>% 
+    mutate(hour = factor(cut(as.integer(activity), breaks = seq(0,1440, by = 60)), labels = 0:23,ordered = T)) %>% 
+    group_by(week,day,hour) %>% 
+    summarise(hour_sum = sum(activity_count)) %>% 
+    ungroup %>% 
+    ggplot(aes(x = hour, y =hour_sum)) +
+    geom_bar(stat = "identity",aes(fill = day)) +
+    scale_x_discrete(name = "Time/hour",)+
+    labs(title = "Activity Counts (per hour) in Each Day of Week")+
+    scale_color_viridis(discrete = T)
+```
+
+### comment
+
+As shown in two plots above, the activity counts of the  accelerometer is low during 0am to 4am, which may indicate that during the deep sleep period, the activity frequency of accelerometer is relatively low; during 9am to 11 am, the activity frequency reach the first peak, which may indicate that during the morning work period, the object we investigate has more highly-motivated activities; during lunch time(11am-2pm), the activity counts are relatively low, which may indicates the mid-day breaks; during afternoon(2pm-5pm), the activity is growing again, but not as high as the morning peak; The highest activity counts falls in night(8pm-9pm), which may indicate that the object has the most Vigorous Activities at early night. There are also day to day variance among weekdays, as shown in minute plot, in sunday, the activity peak is at 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
